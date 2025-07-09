@@ -10,8 +10,8 @@ local PX_GAP = 2
 local PX_SIZE = 60
 
 function love.load()
-  font_galmuri = love.graphics.newFont("assets/fonts/Galmuri11.ttf", 12)
-  love.graphics.setFont(font_galmuri)
+  font_galmuri_mono = love.graphics.newFont("assets/fonts/GalmuriMono11.ttf", 12)
+  love.graphics.setFont(font_galmuri_mono)
 
   block = {}
   G = {}
@@ -38,17 +38,23 @@ function love.load()
     { 61, 55, 56, 62, 77, 92, 101, 99 },
   }
 
-	-- stylua: ignore
-	zigzag_indices = {
-			{1,1},{1,2},{2,1},{3,1},{2,2},{1,3},{1,4},{2,3},
-			{3,2},{4,1},{5,1},{4,2},{3,3},{2,4},{1,5},{1,6},
-			{2,5},{3,4},{4,3},{5,2},{6,1},{7,1},{6,2},{5,3},
-			{4,4},{3,5},{2,6},{1,7},{1,8},{2,7},{3,6},{4,5},
-			{5,4},{6,3},{7,2},{8,1},{8,2},{7,3},{6,4},{5,5},
-			{4,6},{3,7},{2,8},{3,8},{4,7},{5,6},{6,5},{7,4},
-			{8,3},{8,4},{7,5},{6,6},{5,7},{4,8},{5,8},{6,7},
-			{7,6},{8,5},{8,6},{7,7},{6,8},{7,8},{8,7},{8,8}
-	}
+  -- stylua: ignore
+  zigzag_indices = {
+    {1,1},{1,2},{2,1},{3,1},{2,2},{1,3},{1,4},{2,3},
+    {3,2},{4,1},{5,1},{4,2},{3,3},{2,4},{1,5},{1,6},
+    {2,5},{3,4},{4,3},{5,2},{6,1},{7,1},{6,2},{5,3},
+    {4,4},{3,5},{2,6},{1,7},{1,8},{2,7},{3,6},{4,5},
+    {5,4},{6,3},{7,2},{8,1},{8,2},{7,3},{6,4},{5,5},
+    {4,6},{3,7},{2,8},{3,8},{4,7},{5,6},{6,5},{7,4},
+    {8,3},{8,4},{7,5},{6,6},{5,7},{4,8},{5,8},{6,7},
+    {7,6},{8,5},{8,6},{7,7},{6,8},{7,8},{8,7},{8,8}
+  }
+
+  B_ARR = {}
+  BLOCK_ARR = {}
+
+  RAW = ""
+  COMP = ""
 end
 
 function love.update(dt)
@@ -69,6 +75,19 @@ function love.update(dt)
 
     calc_G()
     calc_B()
+
+    RAW = ""
+    COMP = ""
+    B_ARR = {}
+    iterate_2d(function(x, y)
+      RAW = RAW .. lpad(tostring(math.floor(block[x][y])), 3) .. ","
+      local z = zigzag_indices[8 * (x - 1) + y]
+      COMP = COMP .. lpad(tostring(math.floor(B[z[1]][z[2]])), 3) .. ","
+      table.insert(B_ARR, math.floor(B[z[1]][z[2]]))
+    end, function(_)
+      RAW = RAW .. "\n"
+      COMP = COMP .. "\n"
+    end)
   end
 end
 
@@ -107,6 +126,8 @@ function love.draw()
     8 * PX_SIZE + PX_GAP * 2,
     8 * PX_SIZE + PX_GAP * 2
   )
+
+  love.graphics.print(RAW .. "\n\n" .. COMP .. "\n\n" .. tablestring(B_ARR), G_X, G_Y)
 end
 
 function love.keypressed(k)
@@ -148,7 +169,7 @@ end
 ---@param between nil|function(x: number): void
 ---@param w number|nil
 ---@param h number|nil
-function iterate_2d(func, w, h, between)
+function iterate_2d(func, between, w, h)
   w = w or 8
   h = h or 8
   for x = 1, w do
@@ -159,4 +180,63 @@ function iterate_2d(func, w, h, between)
       func(x, y)
     end
   end
+end
+
+---@param str string
+---@param c integer
+---@return string
+function srep(str, c)
+  local res = ""
+  for _ = 0, c do
+    res = res .. str
+  end
+  return res
+end
+
+---@param t table
+---@param w number|nil
+---@return string
+function tablestring(t, w)
+  w = w or 40
+  local result = {}
+  local line = 1
+  result[1] = "{ "
+  for i = 1, #t do
+    if #(result[line] .. t[i]) >= w then
+      line = line + 1
+      result[line] = ""
+    end
+    local a = t[i]
+    result[line] = result[line] .. a .. ", "
+  end
+  result[line] = result[line] .. " }"
+
+  local result_string = ""
+
+  for _, st in ipairs(result) do
+    result_string = result_string .. st .. "\n"
+  end
+
+  return result_string
+end
+
+---@param s string
+---@param l integer
+---@param c string|nil
+---@return string
+---@return boolean
+function lpad(s, l, c)
+  local res = srep(c or " ", l - #s) .. s
+  return res, res ~= s
+end
+
+---@param s string
+---@param l integer
+---@param c string|nil
+---@return string
+---@return boolean
+function rpad(s, l, c)
+  local res = s .. srep(c or " ", l - #s)
+
+  return res, res ~= s
 end
